@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Neural Network</title>
+	
+	<style>
+		body{
+			margin: 20px;
+			overflow: hidden;
+			font-family:'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+			font-size: 4vh;
+			color: white;
+			background-image: url("images/background.jpg");
+			background-size: cover;
+		}
+
+		img{
+			border: solid;
+			width: 5vw;
+			background-color: white;
+		}
+
+		img:hover{
+			border: solid;
+			width: 5vw;
+			background-color: black;
+			transition-duration: 200ms;
+		}
+
+		#main{
+			position: fixed;
+			right: 10vh;
+			top: 10vh;
+			/* background-color: aqua; */
+			width: 50vw;
+			height: 70vh;
+		}
+		
+	</style>
+
+</head>
+<body onload="clear()">
+	<div style="width: fit-content; text-align: center;">
+		Draw Your Number Here
+		<hr>
+		<canvas id = "canvas"> </canvas>
+		<div style="display: flex; justify-content: space-evenly;">
+			<img src = "images/delete.svg" onclick="select(0)">
+			<img src = "images/erase.svg" onclick="select(1)">
+			<img src = "images/draw.svg" onclick="select(2)">
+		</div>
+	</div>
+
+	<div id="main">
+		<p id="guess">Best Guess: </p>
+		<br>
+		<p id="list">Confidence: </p>
+	</div>
+
+
+	<script src="FeedForwardNetwork.js"></script>
+	<script src="weights.js"></script>
+	<script>
+		let canvas = document.getElementById("canvas");
+		let ctx = canvas.getContext("2d");
+		canvas.width = window.innerWidth/4;
+		canvas.height = canvas.width;
+
+		//grid canvas vars
+		let size = canvas.width/28;
+		let topOffset =window.innerHeight*.1;
+		let leftOffset = 20;
+		let curTool = 2;
+
+		// Add variables and event listeners for mouse movement and clicks
+		let mousePositionX;
+		let mousePositionY;
+		let mouseStartX;
+		let isMouseDown = false;
+		window.addEventListener('mousemove', function (e){
+			mousePositionX = e.clientX;
+			mousePositionY = e.clientY;
+			update();
+		});
+		window.addEventListener('mousedown', function (e){
+			isMouseDown = true;
+			mouseStartX = e.clientX;
+			update();
+		});
+		window.addEventListener('mouseup', function (e){
+			isMouseDown = false;
+			update();
+			run();
+		});
+
+		//initiallization
+		let n = new FeedForwardNetwork();
+		let grid = [];
+		for(let i = 0; i < 28; i++){
+			let row = []; 
+            for (let j = 0; j < 28; j++)
+				row.push(0);
+			grid.push(row);
+		}
+
+		function select(tool){
+			if(tool == 0)
+				clear()
+			else
+				curTool = tool;
+		}
+
+		function update(){
+			for(let i = 2; i < 26; i++){
+				for (let j = 2; j < 26; j++){
+					if(Math.abs(Math.floor((mousePositionX-leftOffset)/size)-i) <= 1 && 
+						Math.abs(Math.floor((mousePositionY-topOffset)/size)-j) <=1 && isMouseDown){
+						grid[i][j] = curTool-1;
+					}
+				}
+			}
+			drawBoard();
+			//drawGrid();
+		}
+
+		function drawBoard(){
+			if(isMouseDown){
+				if(curTool == 2)
+					ctx.fillStyle = "white";
+				else 
+					ctx.fillStyle = "black";
+				ctx.beginPath();
+				ctx.arc(mousePositionX-leftOffset, mousePositionY-topOffset, size*2, 0, 2 * Math.PI);
+				ctx.fill();
+			}
+			ctx.fillStyle = "white";
+			ctx.fillRect(0, 0, canvas.width, size*2);
+			ctx.fillRect(0, 0, size*2, canvas.width);
+			ctx.fillRect(canvas.width-size*2, 0, size*2, canvas.width);
+			ctx.fillRect(0, canvas.width-size*2, canvas.width, size*2);
+		}
+
+		function drawGrid(){
+			ctx.fillStyle = "white";
+			ctx.fillRect(0, 0, canvas.width, canvas.height);
+			ctx.fillStyle = 'black';
+			ctx.beginPath();
+			ctx.rect(size*2, size*2, size*24, size*24);
+			ctx.stroke();
+			for(let i = 0; i < 28; i++){
+				for (let j = 0; j < 28; j++){
+						ctx.beginPath();
+						ctx.rect(size*i, size*j, size, size);
+						ctx.stroke();
+					if(grid[i][j] == 1)
+						ctx.fillRect(i*size, j*size, size, size);
+					}
+			}
+		}
+
+
+		function run(){
+			let input = [];
+			for(let i = 0; i < 28; i++)
+				for (let j = 0; j < 28; j++)
+					input.push(grid[j][i]);
+			let output = n.testNetwork(input);
+			for (let i = 0; i < output.length; i++) 
+				output[i] = Math.floor(output[i]*100)
+			let max = output[0];
+			let maxIndex = 0;
+			let isGood = false;
+
+			for (let i = 1; i < output.length; i++) {
+				if (output[i] > max) {
+					maxIndex = i;
+					max = output[i];
+				}
+				if(output[i] >= .01)
+					isGood = true;
+			}
+			list.innerHTML = "Confidence: " + output;
+			guess.innerHTML = "Best Guess: " + (isGood?maxIndex:"?");
+		}
+
+		function clear(){
+			console.log("clearing")
+			for(let i = 0; i < 28; i++){
+				for (let j = 0; j < 28; j++)
+						grid[i][j] = 0;
+			}
+			ctx.fillStyle = "black";
+			ctx.fillRect(0, 0, canvas.width, canvas.height);
+			update();
+			run();
+		}
+		
+	</script>
+</body>
