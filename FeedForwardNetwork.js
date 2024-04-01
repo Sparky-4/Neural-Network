@@ -47,7 +47,7 @@ class FeedForwardNetwork {
         }
         // last hidden layer to output layer
         this.feedForward(activation, this.hiddenLayerSize, this.outputLayerSize, this.numHiddenLayers);
-        return activation[this.numHiddenLayers+1];
+        return activation;
 	}
 }
 	

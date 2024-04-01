@@ -29,7 +29,7 @@
 
 		#main{
 			position: fixed;
-			right: 10vh;
+			right: 10vw;
 			top: 10vh;
 			/* background-color: aqua; */
 			width: 50vw;
@@ -52,9 +52,7 @@
 	</div>
 
 	<div id="main">
-		<p id="guess">Best Guess: </p>
-		<br>
-		<p id="list">Confidence: </p>
+		<canvas id = "mainAreaCanvas"></canvas>
 	</div>
 
 
@@ -63,14 +61,21 @@
 	<script>
 		let canvas = document.getElementById("canvas");
 		let ctx = canvas.getContext("2d");
+		let mainCanvas = document.getElementById("mainAreaCanvas");
+		let mctx = mainCanvas.getContext("2d");
 		canvas.width = window.innerWidth/4;
 		canvas.height = canvas.width;
+		mainCanvas.width = window.innerWidth/2;
+		mainCanvas.height = mainCanvas.width;
 
 		//grid canvas vars
 		let size = canvas.width/28;
+		let rectSize = mainCanvas.width/56;
 		let topOffset =window.innerHeight*.1;
 		let leftOffset = 20;
 		let curTool = 2;
+		let middle = [];
+		let output = [];
 
 		// Add variables and event listeners for mouse movement and clicks
 		let mousePositionX;
@@ -89,7 +94,6 @@
 		});
 		window.addEventListener('mouseup', function (e){
 			isMouseDown = false;
-			update();
 			run();
 		});
 
@@ -120,7 +124,8 @@
 				}
 			}
 			drawBoard();
-			//drawGrid();
+			if(mousePositionX > window.innerWidth*.4)
+			drawLines();
 		}
 
 		function drawBoard(){
@@ -141,46 +146,126 @@
 		}
 
 		function drawGrid(){
-			ctx.fillStyle = "white";
-			ctx.fillRect(0, 0, canvas.width, canvas.height);
-			ctx.fillStyle = 'black';
-			ctx.beginPath();
-			ctx.rect(size*2, size*2, size*24, size*24);
-			ctx.stroke();
+			mctx.globalAlpha = 1;
 			for(let i = 0; i < 28; i++){
 				for (let j = 0; j < 28; j++){
-						ctx.beginPath();
-						ctx.rect(size*i, size*j, size, size);
-						ctx.stroke();
-					if(grid[i][j] == 1)
-						ctx.fillRect(i*size, j*size, size, size);
+					if(grid[i][j] == 1){
+						mctx.fillStyle = 'cyan';
 					}
+					else{
+						mctx.fillStyle = 'black';
+					}
+					mctx.fillRect(i*rectSize, j*rectSize, rectSize, rectSize);
+					mctx.strokeStyle = "black";
+					mctx.beginPath();
+					mctx.rect(i*rectSize, j*rectSize, rectSize, rectSize);
+					mctx.stroke();
+				}
 			}
+			mctx.font = ""+rectSize*2+"px Arial";
+			mctx.fillStyle = 'white';
+			mctx.fillText("Input Layer", 0, rectSize*28);
 		}
 
+		function drawDetail(){
+			// Get max data
+			let max = output[0];
+			let maxIndex = 0;
+			for (let i = 0; i < output.length; i++) {
+				if (output[i] > max) {
+					maxIndex = i;
+					max = output[i];
+				}
+			}
+			// Start by drawing grid
+			mctx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+			drawGrid();
+			// Draw middle layer
+			mctx.fillStyle = 'cyan';
+			for(let i = 0; i < middle.length; i++){
+				mctx.globalAlpha = middle[i];
+				mctx.fillRect((i%20*rectSize) + rectSize*35, Math.floor(i/20)*rectSize, rectSize, rectSize);
+			}
+			mctx.globalAlpha = 1;
+			mctx.font = ""+rectSize*2+"px Arial";
+			mctx.fillStyle = 'white';
+			mctx.fillText("Hidden Layer", rectSize*35, rectSize*7);
+			// draw output and best result
+			mctx.strokeStyle = "white";
+			mctx.beginPath();
+			mctx.rect(rectSize*35, rectSize*16, rectSize*10, rectSize);
+			mctx.stroke();
+			mctx.font = ""+rectSize+"px Arial";
+			mctx.fillStyle = 'cyan';
+			for(let i = 0; i < output.length; i++){
+				mctx.globalAlpha = 1;
+				mctx.fillText(i, (i%20*rectSize) + rectSize*35, Math.floor(i/20)*rectSize + rectSize*15);
+				mctx.globalAlpha = output[i]/100;
+				mctx.fillRect((i%20*rectSize) + rectSize*35, Math.floor(i/20)*rectSize + rectSize*16, rectSize, rectSize);
+			}
+			mctx.globalAlpha = 1;
+			mctx.font = ""+rectSize*3+"px Arial";
+			mctx.fillStyle = 'white';
+			mctx.fillText("Best Guess: " + maxIndex, rectSize*35, rectSize*22);
+			mctx.fillText("Confidence: " + max, rectSize*35, rectSize*28);
+		}
+
+		function drawLines(){
+			let xPos = mousePositionX - window.innerWidth*.4;
+			let yPos = mousePositionY - window.innerHeight*.1;
+			for(i = 0; i < middle.length; i++){
+				if(xPos > (i%20*rectSize) + rectSize*35 && xPos < (i%20*rectSize) + rectSize*36 &&
+					yPos > Math.floor(i/20)*rectSize && yPos < (Math.floor(i/20)+1)*rectSize){
+					mctx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+					drawGrid();
+					drawDetail();
+					for(let j = 0; j < WEIGHTS[0].length; j++){
+						let w = Math.abs(WEIGHTS[0][j][i]);
+						if(w > .5){
+							mctx.globalAlpha = 1;
+							mctx.strokeStyle = "rgb("+(255*w)+","+(255*w)+",255)";
+							mctx.beginPath();
+							mctx.moveTo(j%28*rectSize + rectSize/2, j*rectSize/28 + rectSize/2);
+							mctx.lineTo((i%20*rectSize) + rectSize*35 + rectSize/2, Math.floor(i/20)*rectSize + rectSize/2);
+							mctx.stroke();
+						}
+					}
+					return;
+				}
+			}
+			for(i = 0; i < output.length; i++){
+				if(xPos > (i%20*rectSize) + rectSize*35 && xPos < (i%20*rectSize) + rectSize*36 &&
+					yPos > Math.floor(i/20)*rectSize + rectSize*16 && yPos < Math.floor(i/20)*rectSize + rectSize*17){
+					mctx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+					drawGrid();
+					drawDetail();
+					for(let j = 0; j < WEIGHTS[1].length; j++){
+						let w = Math.abs(WEIGHTS[1][j][i]);
+						if(w > .5 && middle[j] > .5){
+							mctx.globalAlpha = 1;
+							mctx.strokeStyle = "rgb("+(255*w)+","+(255*w)+",255)";
+							mctx.beginPath();
+							mctx.moveTo((j%20*rectSize) + rectSize*35 + rectSize/2, Math.floor(j/20)*rectSize + rectSize/2);
+							mctx.lineTo((i%20*rectSize) + rectSize*35 + rectSize/2, Math.floor(i/20)*rectSize + rectSize*16 + rectSize/2);
+							mctx.stroke();
+						}
+					}
+					return;
+				}
+			}
+		}
 
 		function run(){
 			let input = [];
 			for(let i = 0; i < 28; i++)
 				for (let j = 0; j < 28; j++)
 					input.push(grid[j][i]);
-			let output = n.testNetwork(input);
+			let activation = n.testNetwork(input);
+			middle = activation[1];
+			output = activation[2];
 			for (let i = 0; i < output.length; i++) 
-				output[i] = Math.floor(output[i]*100)
-			let max = output[0];
-			let maxIndex = 0;
-			let isGood = false;
-
-			for (let i = 1; i < output.length; i++) {
-				if (output[i] > max) {
-					maxIndex = i;
-					max = output[i];
-				}
-				if(output[i] >= .01)
-					isGood = true;
-			}
-			list.innerHTML = "Confidence: " + output;
-			guess.innerHTML = "Best Guess: " + (isGood?maxIndex:"?");
+				output[i] = Math.floor(output[i]*100);
+			drawDetail();
 		}
 
 		function clear(){
