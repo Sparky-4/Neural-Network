@@ -2,41 +2,7 @@
 <html>
 <head>
 	<title>Neural Network</title>
-	
-	<style>
-		body{
-			margin: 20px;
-			overflow: hidden;
-			font-family:'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
-			font-size: 4vh;
-			color: white;
-			background-image: url("images/background.jpg");
-			background-size: cover;
-		}
-
-		img{
-			border: solid;
-			width: 5vw;
-			background-color: white;
-		}
-
-		img:hover{
-			border: solid;
-			width: 5vw;
-			background-color: black;
-			transition-duration: 200ms;
-		}
-
-		#main{
-			position: fixed;
-			right: 10vw;
-			top: 10vh;
-			width: 50vw;
-			height: 70vh;
-		}
-		
-	</style>
-
+	<link rel="stylesheet" href="style.css">
 </head>
 <body onload="clear()">
 	<div style="width: fit-content; text-align: center;">
@@ -52,12 +18,30 @@
 
 	<div id="main">
 		<canvas id = "mainAreaCanvas"></canvas>
+		<div class="slidecontainer">
+			<p>Threshold Value: <span id="demo"></span></p>
+			<input type="range" min="0" max="100" value="50" class="slider" id="myRange">
+		</div>
+		<br>
+		<span id="bar"></span>
 	</div>
 
 
 	<script src="FeedForwardNetwork.js"></script>
 	<script src="weights.js"></script>
 	<script>
+		//slider vars
+		let slider = document.getElementById("myRange");
+		let thresholdDiv = document.getElementById("demo");
+		let threshold = .5;
+		thresholdDiv.innerHTML = slider.value/100;
+		slider.oninput = function() {
+			threshold = this.value/100;
+			bar.style.backgroundColor = "rgb("+(threshold*255)+", "+(threshold*255)+", 255)";
+			thresholdDiv.innerHTML = threshold;
+		}
+		
+		//canvas vars
 		let canvas = document.getElementById("canvas");
 		let ctx = canvas.getContext("2d");
 		let mainCanvas = document.getElementById("mainAreaCanvas");
@@ -65,9 +49,9 @@
 		canvas.width = window.innerWidth/4;
 		canvas.height = canvas.width;
 		mainCanvas.width = window.innerWidth/2;
-		mainCanvas.height = mainCanvas.width;
+		mainCanvas.height = mainCanvas.width*2/3;
 
-		//grid canvas vars
+		//grid vars
 		let size = canvas.width/28;
 		let rectSize = mainCanvas.width/56;
 		let topOffset =window.innerHeight*.1;
@@ -220,7 +204,7 @@
 					drawDetail();
 					for(let j = 0; j < WEIGHTS[0].length; j++){
 						let w = Math.abs(WEIGHTS[0][j][i]);
-						if(w > .5){
+						if(w > threshold){
 							mctx.globalAlpha = 1;
 							mctx.strokeStyle = "rgb("+(255*w)+","+(255*w)+",255)";
 							mctx.beginPath();
@@ -240,7 +224,7 @@
 					drawDetail();
 					for(let j = 0; j < WEIGHTS[1].length; j++){
 						let w = Math.abs(WEIGHTS[1][j][i]);
-						if(w > .5 && middle[j] > .5){
+						if(w > threshold && middle[j] > threshold){
 							mctx.globalAlpha = 1;
 							mctx.strokeStyle = "rgb("+(255*w)+","+(255*w)+",255)";
 							mctx.beginPath();
